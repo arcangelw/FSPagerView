@@ -8,145 +8,149 @@
 
 import UIKit
 
+/// A reusable pager view cell that supports an image view and a text label.
 open class FSPagerViewCell: UICollectionViewCell {
-    
-    /// Returns the label used for the main textual content of the pager view cell.
+    /// The label used for the main textual content of the pager view cell.
     @objc
     open var textLabel: UILabel? {
-        if let _ = _textLabel {
-            return _textLabel
+        if let label = _textLabel {
+            return label
         }
-        let view = UIView(frame: .zero)
-        view.isUserInteractionEnabled = false
-        view.backgroundColor = UIColor.black.withAlphaComponent(0.6)
-        
-        let textLabel = UILabel(frame: .zero)
-        textLabel.textColor = .white
-        textLabel.font = UIFont.preferredFont(forTextStyle: .body)
-        self.contentView.addSubview(view)
-        view.addSubview(textLabel)
-        
-        textLabel.addObserver(self, forKeyPath: "font", options: [.old,.new], context: kvoContext)
-        
-        _textLabel = textLabel
-        return textLabel
+        let backgroundView = UIView(frame: .zero)
+        backgroundView.isUserInteractionEnabled = false
+        backgroundView.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+
+        let label = UILabel(frame: .zero)
+        label.textColor = .white
+        label.font = UIFont.preferredFont(forTextStyle: .body)
+
+        contentView.addSubview(backgroundView)
+        backgroundView.addSubview(label)
+
+        label.addObserver(self, forKeyPath: "font", options: [.old, .new], context: kvoContext)
+
+        _textLabel = label
+        return label
     }
-    
-    /// Returns the image view of the pager view cell. Default is nil.
+
+    /// The image view used to display the image content of the pager view cell.
     @objc
     open var imageView: UIImageView? {
-        if let _ = _imageView {
-            return _imageView
+        if let imageView = _imageView {
+            return imageView
         }
-        let imageView = UIImageView(frame: .zero)
-        self.contentView.addSubview(imageView)
-        _imageView = imageView
-        return imageView
+        let imgView = UIImageView(frame: .zero)
+        contentView.addSubview(imgView)
+        _imageView = imgView
+        return imgView
     }
-    
-    fileprivate weak var _textLabel: UILabel?
-    fileprivate weak var _imageView: UIImageView?
-    
-    fileprivate let kvoContext = UnsafeMutableRawPointer(bitPattern: 0)
-    fileprivate let selectionColor = UIColor(white: 0.2, alpha: 0.2)
-    
-    fileprivate weak var _selectedForegroundView: UIView?
-    fileprivate var selectedForegroundView: UIView? {
-        guard _selectedForegroundView == nil else {
-            return _selectedForegroundView
+
+    private weak var _textLabel: UILabel?
+    private weak var _imageView: UIImageView?
+
+    private let kvoContext = UnsafeMutableRawPointer(bitPattern: 0)
+    private let selectionColor = UIColor(white: 0.2, alpha: 0.2)
+
+    private weak var _selectedForegroundView: UIView?
+
+    /// A view that overlays the image view to indicate selection or highlight state.
+    private var selectedForegroundView: UIView? {
+        if let view = _selectedForegroundView {
+            return view
         }
         guard let imageView = _imageView else {
             return nil
         }
-        let view = UIView(frame: imageView.bounds)
-        imageView.addSubview(view)
-        _selectedForegroundView = view
-        return view
+        let overlay = UIView(frame: imageView.bounds)
+        imageView.addSubview(overlay)
+        _selectedForegroundView = overlay
+        return overlay
     }
-    
-    open override var isHighlighted: Bool {
+
+    // MARK: - State Handling
+
+    override open var isHighlighted: Bool {
         set {
             super.isHighlighted = newValue
-            if newValue {
-                self.selectedForegroundView?.layer.backgroundColor = self.selectionColor.cgColor
-            } else if !super.isSelected {
-                self.selectedForegroundView?.layer.backgroundColor = UIColor.clear.cgColor
-            }
+            selectedForegroundView?.layer.backgroundColor = newValue ? selectionColor.cgColor : (super.isSelected ? selectionColor.cgColor : UIColor.clear.cgColor)
         }
         get {
             return super.isHighlighted
         }
     }
-    
-    open override var isSelected: Bool {
+
+    override open var isSelected: Bool {
         set {
             super.isSelected = newValue
-            self.selectedForegroundView?.layer.backgroundColor = newValue ? self.selectionColor.cgColor : UIColor.clear.cgColor
+            selectedForegroundView?.layer.backgroundColor = newValue ? selectionColor.cgColor : UIColor.clear.cgColor
         }
         get {
             return super.isSelected
         }
     }
-    
-    public override init(frame: CGRect) {
+
+    // MARK: - Initializers
+
+    override public init(frame: CGRect) {
         super.init(frame: frame)
         commonInit()
     }
-    
+
     public required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         commonInit()
     }
-    
-    fileprivate func commonInit() {
-        self.contentView.backgroundColor = UIColor.clear
-        self.backgroundColor = UIColor.clear
-        self.contentView.layer.shadowColor = UIColor.black.cgColor
-        self.contentView.layer.shadowRadius = 5
-        self.contentView.layer.shadowOpacity = 0.75
-        self.contentView.layer.shadowOffset = .zero
+
+    /// Common initialization for the pager view cell.
+    private func commonInit() {
+        contentView.backgroundColor = .clear
+        backgroundColor = .clear
+        contentView.layer.shadowColor = UIColor.black.cgColor
+        contentView.layer.shadowRadius = 5
+        contentView.layer.shadowOpacity = 0.75
+        contentView.layer.shadowOffset = .zero
     }
-    
+
     deinit {
-        if let textLabel = _textLabel {
-            textLabel.removeObserver(self, forKeyPath: "font", context: kvoContext)
-        }
+        _textLabel?.removeObserver(self, forKeyPath: "font", context: kvoContext)
     }
-    
+
+    // MARK: - Layout
+
     override open func layoutSubviews() {
         super.layoutSubviews()
-        if let imageView = _imageView {
-            imageView.frame = self.contentView.bounds
-        }
-        if let textLabel = _textLabel {
-            textLabel.superview!.frame = {
-                var rect = self.contentView.bounds
-                let height = textLabel.font.pointSize*1.5
+
+        _imageView?.frame = contentView.bounds
+
+        if let textLabel = _textLabel, let backgroundView = textLabel.superview {
+            backgroundView.frame = {
+                var rect = contentView.bounds
+                let height = textLabel.font.pointSize * 1.5
                 rect.size.height = height
-                rect.origin.y = self.contentView.frame.height-height
+                rect.origin.y = contentView.frame.height - height
                 return rect
             }()
             textLabel.frame = {
-                var rect = textLabel.superview!.bounds
+                var rect = backgroundView.bounds
                 rect = rect.insetBy(dx: 8, dy: 0)
                 rect.size.height -= 1
                 rect.origin.y += 1
                 return rect
             }()
         }
-        if let selectedForegroundView = _selectedForegroundView {
-            selectedForegroundView.frame = self.contentView.bounds
-        }
+
+        _selectedForegroundView?.frame = contentView.bounds
     }
 
-    open override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+    // MARK: - Key-Value Observing
+
+    override open func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
         if context == kvoContext {
             if keyPath == "font" {
-                self.setNeedsLayout()
+                setNeedsLayout()
             }
         } else {
             super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
         }
     }
-    
 }
